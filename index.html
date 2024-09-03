@@ -1,0 +1,282 @@
+<?php
+$username = 'root';
+$password = '';
+$database = 'diary';
+$host = 'localhost';
+$mysqli = new mysqli($host, $username, $password, $database);
+
+// Checking for connections
+if ($mysqli->connect_error) {
+    die('Connect Error (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error);
+}
+
+// SQL query to select data from database
+$sql = "SELECT * FROM personal";
+$result = $mysqli->query($sql);
+
+if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['id'])) {
+    $id = $_GET['id'];
+
+    // Delete the row with the specified ID
+    $sql = "DELETE FROM personal WHERE id = $id";
+    $result = $mysqli->query($sql);
+
+    // Check if the delete operation was successful
+    if ($result) {
+        echo "<script>
+            alert('Record deleted successfully for ID: $id');
+            setTimeout(function() {
+                window.location.href = 'index.html'; // Redirect to index.html after deletion
+            }, 1); // Add a small delay (e.g., 500 milliseconds) before redirecting
+          </script>";
+    } else {
+        echo "<script>alert('Error deleting record for ID: $id');</script>";
+    }
+}
+// Handle search filter
+if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['search_column']) && isset($_GET['search_value'])) {
+    $search_column = $_GET['search_column'];
+    $search_value = $_GET['search_value'];
+
+    // SQL query to select filtered data from the database
+    $sql = "SELECT * FROM personal WHERE $search_column LIKE '%$search_value%'";
+    $result = $mysqli->query($sql);
+}
+// Fetch distinct categories from the database
+$sqlCategories = "SELECT DISTINCT category FROM personal";
+$resultCategories = $mysqli->query($sqlCategories);
+$categories = array();
+while ($row = $resultCategories->fetch_assoc()) {
+    $categories[] = $row['category'];
+}
+
+
+
+
+$mysqli->close();
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+
+
+<head>
+    <meta charset="UTF-8">
+    <title>User Details</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.13/css/jquery.dataTables.min.css">
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.13/js/jquery.dataTables.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 1020px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f4c4ea;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            max-height: 800px;
+        }
+        .table-container {
+            max-height: 450px; /* Set a fixed height for the table container */
+            overflow-y: auto; /* Add a vertical scrollbar if needed */
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            /*overflow: hidden;
+            max-height: 400px; /* Set a fixed height for the table */
+        }
+        
+        th{
+           position: relative;
+              overflow: auto;
+              font-weight: bold;
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            font-weight: bold;
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            position: relative;
+            overflow: auto;
+            background-color: #f5daef;
+        }
+
+        td {
+            background-color: #fff;
+        }
+
+        .button-container {
+        display: flex;
+    }
+
+    .add-button,
+    .event-button {
+        margin-right: 10px;
+        background-color: #cc3cad;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .add-button:hover,
+    .event-button:hover {
+        background-color: #9845a0;
+    }
+        /* Add styles for the search box */
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            margin-right: 10px;
+        }
+
+        .tableFixHead thead th{
+        position: sticky; /* make the table heads sticky */
+        top: 0px; /* table head will be placed from the top of the table and sticks to it */
+      }
+      .scrollable-table {
+            max-height: 500px; /* Set the desired height for the scrollable block */
+            width: 100%; /* Set the width to 100% */
+            overflow-y: auto;}
+        button {
+      padding: 8px;
+      background-color: #9845a0;
+      color: white;
+      border: none;
+      cursor: pointer;
+}
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2><svg xmlns="http://www.w3.org/2000/svg" width="20" height="18" fill="currentColor" class="bi bi-file-earmark-text-fill" viewBox="0 0 16 16">
+            <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0M9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1M4.5 9a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1zM4 10.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m.5 2.5a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1z" />
+        </svg>  Details</h2>
+        <div class="search-container">
+            <select class="search-box" name="search_column" id="search_column">
+                <option value="name">Name</option>
+                <option value="address">Address</option>
+                <option value="phone_number">Phone number</option>
+                <option value="email_id">Email ID</option>
+                
+            </select>
+           
+            <input class="search-box" type="text" name="search_value" id="search_value" placeholder="Search...">
+            <!--button onclick="search()">Search</button-->
+            <select class="search-box" name="search_category" id="search_category">
+                <option value="" selected disabled>Select Category</option>
+                <?php foreach ($categories as $category) { ?>
+                    <option value="<?php echo $category; ?>"><?php echo $category; ?></option>
+                <?php } ?>
+            </select>
+            <button onclick="searchByCategory()">Search by Category</button>
+            <button onclick="resetSearch()">Reset</button>
+        </div>
+        <!-- ... (your existing HTML code) ... -->
+
+<div class="button-container">
+    <button class="add-button" onclick="location.href='details.html'">Add</button>
+    <button class="add-button" onclick="location.href='calendar.html'">Event</button>
+</div>
+
+<!-- ... (rest of your HTML code) ... -->
+
+        
+        <!-- TABLE CONSTRUCTION -->
+        <div class="table-container">
+            <div class="tableFixHead">
+        <table id="example" class="example" width="100%" cellspacing="0"><thead>
+            <tr>
+                <th>Name</th>
+                <th>Address</th>
+                <th>Phone number</th>
+                <th>Email ID</th>
+                <th>Category</th>
+                <th>Edit & delete</th>
+            </tr></thead><tbody>
+            <!-- PHP CODE TO FETCH DATA FROM ROWS -->
+            <?php while ($rows = $result->fetch_assoc()) { ?>
+                <tr>
+                    <!-- FETCHING DATA FROM EACH ROW OF EVERY COLUMN -->
+                    <td><?php echo $rows['name']; ?></td>
+                    <td><?php echo $rows['address']; ?></td>
+                    <td><?php echo $rows["phone_number"]; ?></td>
+                    <td><?php echo $rows["email_id"]; ?></td>
+                    <td><?php echo str_replace('-', ' ', $rows["category"]); ?></td>
+                    <td>
+                        <a href="edit.php?id=<?php echo $rows['id']; ?>">Edit</a>
+                        <a href="?id=<?php echo $rows['id']; ?>" onclick="return confirmdelete()">Delete</a>
+                    </td>
+                </tr>
+            <?php } ?>
+        </tbody>
+        </table>
+    </div></div>
+        <script>
+
+
+$(document).ready(function() {
+   $('#example').DataTable( {
+       "pagingType": "full_numbers"
+   } );
+     
+ } );
+            function confirmdelete() {
+                return confirm("Are you sure to delete this record?");
+            }
+            function search() {
+                var searchColumn = document.getElementById('search_column').value;
+                var searchValue = document.getElementById('search_value').value;
+                window.location.href = '?search_column=' + searchColumn + '&search_value=' + searchValue;
+            }
+
+            function resetSearch() {
+                window.location.href = 'index.html'; // Replace with the actual filename
+            }
+            function searchByCategory() {
+            var searchCategory = document.getElementById('search_category').value;
+            window.location.href = '?search_column=category&search_value=' + searchCategory;
+        }
+        // Add an event listener to trigger search when Enter is pressed in the search box
+        document.getElementById('search_value').addEventListener('keyup', function (event) {
+                if (event.key === 'Enter') {
+                    search();
+                }
+            });
+            
+
+        </script>
+    </div>
+</body>
+
+</html>

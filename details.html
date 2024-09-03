@@ -1,0 +1,194 @@
+<?php
+error_reporting(0);
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $host = "localhost";
+    $dbname = "diary";
+    $username = "root";
+    $password = "";
+    $connect = mysqli_connect($host, $username, $password, $dbname);
+
+    if (mysqli_connect_error()) {
+        die("Connection error: " . mysqli_connect_error());
+    }
+
+    $name = $_POST["name"];
+    $address = $_POST["address"];
+    $phone = $_POST["phone"];
+    $email = $_POST["email"];
+    $category = $_POST["category"];
+
+    // Check if the email already exists in the database
+    $checkEmailQuery = "SELECT * FROM personal WHERE email_id = ?";
+    $checkStmt = mysqli_stmt_init($connect);
+
+    if (mysqli_stmt_prepare($checkStmt, $checkEmailQuery)) {
+        mysqli_stmt_bind_param($checkStmt, "s", $email);
+        mysqli_stmt_execute($checkStmt);
+
+        $result = mysqli_stmt_get_result($checkStmt);
+
+        if (mysqli_num_rows($result) > 0) {
+            // Email ID already exists, show alert and exit
+            echo '<script>alert("Email ID already exists!");history.back();</script>';
+            mysqli_stmt_close($checkStmt);
+            mysqli_close($connect);
+            exit();
+            
+        }
+
+        mysqli_stmt_close($checkStmt);
+    } else {
+        die(mysqli_error($connect));
+    }
+
+
+    $sql = "INSERT INTO personal (name, address, phone_number, email_id, category) VALUES (?, ?, ?, ?, ?)";
+
+    $stmt = mysqli_stmt_init($connect);
+
+    if (!mysqli_stmt_prepare($stmt, $sql)) {
+        die(mysqli_error($connect));
+    }
+
+    mysqli_stmt_bind_param($stmt, "sssss", $name, $address, $phone, $email, $category);
+
+    if (mysqli_stmt_execute($stmt)) {
+        echo '<script>alert("Details stored successfully.");window.location.href = "index.html";</script>';
+    } else {
+
+       echo "Error: " . mysqli_error($connect);
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_close($connect);
+}
+?>
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Personal Information Form</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+    
+        .container {
+            max-width: 650px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f4c4ea;
+           /* background-color: #add8e6;*/
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 15px; /* Add border-radius for curved edges */
+           
+        }
+    
+        form {
+            display: grid;
+            gap: 15px;
+        }
+    
+        label {
+            font-weight: bold;
+        }
+    
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 10px; /* Add border-radius for curved edges */
+        }
+    
+        small {
+            color: #888;
+        }
+    
+        .extra-category-container {
+            display: grid;
+            gap: 10px;
+        }
+    </style>
+    
+</head>
+<body>
+    <a href="index.html" style="position: absolute; top: 10px; left: 10px; text-decoration: none; color: #000;">
+        <button style="padding: 8px; background-color: #ccc; border: none; cursor: pointer;">Back</button>
+      </a>
+    <div class="container">
+        <h2><svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" fill="currentColor" class="bi bi-person-circle" viewBox="0 0 16 16">
+            <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
+            <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
+          </svg> Personal Information</h2>
+        <form method="POST"   id="personalInfoForm">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" placeholder="name with initial" required>
+
+            <label for="address">Address:</label>
+            <input type="text" id="address" name="address" required>
+
+            <label for="phone">Phone Number:</label>
+            <input type="tel" id="phone" name="phone" pattern="[0-9]{10}" required>
+
+            <label for="email">Email ID:</label>
+            <input type="email" id="email" name="email" placeholder="abc@gmail.com" required>
+
+            <div class="extra-category-container">
+                <label for="category">Category:</label>
+                <select id="category" name="category">
+                    <!-- Initially, the dropdown is empty -->
+                    <option value="null"></option>
+                <option value="working">working</option>
+                <option value="friends">friends</option>
+                <option value="close-friends">close friends</option>
+                <option value="relatives">relatives</option>
+                <option value="close-relatives">close relatives</option>
+                </select>
+                
+                <button type="button" onclick="addExtraCategory()">Add Category</button>
+            </div>
+
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        function addExtraCategory() {
+            var newCategory = prompt("Enter the name of the new category:");
+            if (newCategory) {
+                var categorySelect = document.getElementById("category");
+    
+                // Check if the option already exists
+                var existingOption = Array.from(categorySelect.options).find(option => option.text === newCategory);
+    
+                if (!existingOption) {
+                    // If the option does not exist, add it to the dropdown
+                    var newOption = document.createElement("option");
+                    newOption.value = newCategory;
+                    newOption.text = newCategory;
+                    categorySelect.add(newOption);
+    
+                    // Also update the input field (category textbox)
+                    var categoryInput = document.getElementById("categoryInput");
+                    categoryInput.value = newOption.value;
+                } else {
+                    alert("Category already exists!");
+                }
+            }
+        }
+
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,308 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calendar with Events</title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.10.13/css/jquery.dataTables.min.css">
+
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.13/js/jquery.dataTables.min.js"></script>
+  <style>
+    /* Styles for the Calendar */
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Styles for the Event Section */
+    
+
+    input {
+      width: 80%;
+      padding: 5px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      padding: 8px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    /*styles for all events section*/
+    .scrollable-table {
+            max-height: 400px; /* Set the desired height for the scrollable block */
+            width: 90%; /* Set the width to 100% */
+            overflow-y: auto;
+
+        }
+    
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th.date-column,
+    td.date-column {
+      width: 100px; /* Adjust the width according to your preference */
+}
+
+    
+      th{position: relative;
+  overflow: auto;
+
+         border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    
+    td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    .tableFixHead thead th {
+        position: sticky; /* make the table heads sticky */
+        top: 0px; /* table head will be placed from the top of the table and sticks to it */
+      }
+
+  </style>
+</head>
+
+<body>
+
+  <div>
+    <h2>Event Calendar</h2>
+    <form id="eventForm" method="post" >
+    <label for="eventDate">Select Date:</label>
+    <input type="date" id="eventDate" name="eventDate">
+    <br>
+    <label for="eventTime">Select Time:</label>
+    <input type="time" id="eventTime" name="eventTime">
+    <br>
+    <label for="eventSubject">Event Subject:</label>
+    <input type="text" id="eventSubject" name="eventSubject">
+    <br>
+    <label for="eventDescription">Event Description:<br></label>
+    <textarea id="eventDescription" name="eventDescription" rows="4" cols="40"></textarea>
+    <br>
+    <button onclick="addEvent()">Add Event</button>
+    </form>
+  </div>
+
+  <a href="index.html" style="position: absolute; top: 10px; left: 10px; text-decoration: none; color: #000;">
+    <button style="padding: 8px; background-color: #ccc; border: none; cursor: pointer;">Back</button>
+  </a>
+
+<h2>ALL EVENTS</h2>
+
+
+
+  <div class="scrollable-table">
+    <div class="tableFixHead">
+      <table id="example" class="example" width="100%" cellspacing="0">
+
+    
+
+    
+        <thead>
+            <tr>
+                <th class="date-column">Date</th>
+                <th>Time</th>
+                <th>Subject</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="eventsTableBody">
+          <?php
+
+          // Database connection parameters
+            $servername = "localhost";
+            $username = "root";
+            $password = "";
+            $dbname = "diary";
+
+            // Create a connection
+            $conn = new mysqli($servername, $username, $password, $dbname);
+            // Check connection
+            if ($conn->connect_error) {
+                die("Connection failed: " . $conn->connect_error);
+            }
+
+            
+
+            
+            // Fetch data from the events2 table
+            $sqll = "SELECT id,DATE_FORMAT(date, '%d-%m-%Y') as date, time, subject, description FROM events2 ORDER BY id DESC";
+            $result = $conn->query($sqll);
+
+            // Display events in the table
+            while ($row = $result->fetch_assoc()) {
+                $eventId = $row["id"];
+                echo "<tr><td>" . $row["date"] . "</td><td>" . $row["time"] . "</td><td>" . $row["subject"] . "</td><td>" . $row["description"] . "</td><td>
+                    <button class='delete-button' data-event-id='$eventId'>Delete</button>
+                    <button class='edit-button' data-event-id='$eventId'>Edit</button>
+                    <button class='share-button' data-event-id='$eventId'>Share</button>
+                  </td></tr>";
+            }
+
+            // Close the database connection
+            $conn->close();
+            ?>
+
+        </tbody>
+    </table>
+    </div>
+    </div>
+  
+  <script>
+
+$(document).ready(function() {
+   $('#example').DataTable( {
+       "pagingType": "full_numbers"
+   } );
+     
+ } );
+
+
+
+    const eventForm = document.getElementById('eventForm');
+    const calendarTable = document.getElementById('calendarTable');
+
+
+    // Event data stored in an object
+
+    // Event data stored in an object
+let events = typeof eventsFromDatabase !== 'undefined' ? eventsFromDatabase : {};
+
+
+
+    function addEvent() {
+      const eventDateInput = document.getElementById('eventDate');
+      const eventTimeInput = document.getElementById('eventTime');
+      const eventSubjectInput = document.getElementById('eventSubject');
+      const eventDescriptionInput = document.getElementById('eventDescription');
+
+      const date = eventDateInput.value;
+      const time = eventTimeInput.value;
+      const subject = eventSubjectInput.value;
+      const description = eventDescriptionInput.value;
+
+      if (!date || !subject || !time || !description ) {
+        alert('Please enter date, time, subject and event description.');
+        return;
+      }
+      eventForm.action = 'insert_event.php';
+      eventForm.submit();
+      refreshEventsTable();
+      
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+    if (window.location.search.includes('event_added=true')) {
+      refreshEventsTable();
+    }
+  });
+
+    function deleteEvent(eventId) {
+    // Display a confirmation dialog
+    const isConfirmed = confirm("Are you sure you want to delete this event?");
+    
+    if (isConfirmed) {
+        // Set the action attribute of the form dynamically
+        fetch('delete_event.php?id=' + eventId)
+            .then(response => response.text())
+            .then(data => {
+                //alert(data); // Display alert from delete_event.php
+                location.reload(true); // Force a hard reload of the page after the alert
+            })
+            .catch(error => console.error('Error:', error));
+    }
+}
+   
+function editEvent(eventId) {
+    window.location.href = 'update.html?id=' + eventId;
+}
+
+    function refreshEventsTable() {
+    const eventsTableBody = document.getElementById('eventsTableBody');
+
+    // Iterate through the events object and generate table rows
+    for (const [date, time, subject, descriptions] of Object.entries(events)) {
+        const row = document.createElement('tr');
+        const dateCell = document.createElement('td');
+        const timeCell=document.createElement('td');
+        const subjectCell=document.createElement('td');
+        dateCell.dateContent = date;
+        timeCell.timeContent = time;
+        subjectCell.subjectContent = subject;
+        row.appendChild(dateCell);
+        row.appendChild(timeCell);
+        row.appendChild(subjectCell);
+
+        const eventsCell = document.createElement('td');
+        eventsCell.textContent = descriptions.join(', ');
+        row.appendChild(eventsCell);
+        eventsTableBody.appendChild(row);
+    }
+}
+function shareEvent(eventId) {
+        // Redirect to the share event page with the event ID
+        window.location.href = 'share_event.html?id=' + eventId;
+        '&date=' + encodeURIComponent(eventDetails['date']) +
+        '&time=' + encodeURIComponent(eventDetails['time']) +
+        '&subject=' + encodeURIComponent(eventDetails['subject']) +
+        '&description=' + encodeURIComponent(eventDetails['description']);
+    }
+
+document.addEventListener('DOMContentLoaded', function () {
+    const deleteButtons = document.querySelectorAll('.delete-button');
+    const editButtons = document.querySelectorAll('.edit-button');
+    const shareButtons = document.querySelectorAll('.share-button');
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const eventId = this.getAttribute('data-event-id');
+            deleteEvent(eventId);
+        });
+    });
+
+    editButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const eventId = this.getAttribute('data-event-id');
+            editEvent(eventId);
+        });
+    });
+    shareButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const eventId = this.getAttribute('data-event-id');
+                shareEvent(eventId);
+            });
+        });
+    });
+
+
+  </script>
+</body>
+</html>

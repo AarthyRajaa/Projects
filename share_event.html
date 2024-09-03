@@ -1,0 +1,452 @@
+<?php
+$username = 'root';
+$password = '';
+$database = 'diary';
+$host = 'localhost';
+$mysqli = new mysqli($host, $username, $password, $database);
+
+// Checking for connections
+if ($mysqli->connect_error) {
+    die('Connect Error (' . $mysqli->connect_errno . ') ' . $mysqli->connect_error);
+}
+
+
+// Handle form submission
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['sendEvent'])) {
+    $selectedContacts = isset($_POST['contact']) ? $_POST['contact'] : [];
+
+    // Fetch details of selected contacts from the database
+    $selectedContactsDetails = [];
+    foreach ($selectedContacts as $contactID) {
+        $sqlContact = "SELECT * FROM personal WHERE id = $contactID";
+        $resultContact = $mysqli->query($sqlContact);
+        $contactDetails = $resultContact->fetch_assoc();
+        $selectedContactsDetails[] = $contactDetails;
+
+
+        $to = $contactDetails['email_id'];
+        $subject = "Event Invitation";
+        $message = "You are invited to an event on $date at $time. Description: $description";
+        sendEmail($to, $subject, $message);
+
+    }
+    // Log the event sharing activity (you can replace this with your specific logging mechanism)
+    foreach ($selectedContactsDetails as $contact) {
+        echo "Event selected for sharing with contact ID: " . $contact['id'] . "\n";
+    }
+}
+
+// Handle search filter
+if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['search_column']) && isset($_GET['search_value'])) {
+    $search_column = $_GET['search_column'];
+    $search_value = $_GET['search_value'];
+
+    // Validate and sanitize user input
+    $search_column = mysqli_real_escape_string($mysqli, $search_column);
+    $search_value = mysqli_real_escape_string($mysqli, $search_value);
+
+    // SQL query to select filtered data from the database
+    $sql = "SELECT * FROM personal WHERE $search_column LIKE '%$search_value%'";
+    $result = $mysqli->query($sql);
+
+    // Check for errors during the query execution
+    if (!$result) {
+        die('Error in search query: ' . $mysqli->error);
+    }
+} else {
+    // Fetch all data if there is no search parameter
+    $sql = "SELECT * FROM personal";
+    $result = $mysqli->query($sql);
+
+    // Check for errors during the query execution
+    if (!$result) {
+        die('Error fetching data: ' . $mysqli->error);
+    }
+}
+
+// Fetch distinct categories from the database
+$sqlCategories = "SELECT DISTINCT category FROM personal";
+$resultCategories = $mysqli->query($sqlCategories);
+
+// Check for errors during the query execution
+if (!$resultCategories) {
+    die('Error fetching categories: ' . $mysqli->error);
+}
+
+$categories = array();
+while ($row = $resultCategories->fetch_assoc()) {
+    $categories[] = $row['category'];
+}
+
+// Fetch data from the database based on the event ID
+$eventId = isset($_GET["id"]) ? $_GET["id"] : null;
+$eventDetails = null;
+
+if ($eventId !== null) {
+    $sql = "SELECT id,DATE_FORMAT(date, '%d-%m-%Y') as date, time, subject, description FROM events2 WHERE id = $eventId";
+    $result = $mysqli->query($sql);
+
+    // Check for errors during the query execution
+    if (!$result) {
+        die('Error fetching event details: ' . $mysqli->error);
+    }
+
+    // Fetch the event details
+    $eventDetails = $result->fetch_assoc();
+
+    // Free the result set
+    $result->free();
+    
+}
+
+
+
+// Fetch user details from the database
+if(isset($search_value) && isset($search_column)){
+$sqlUserDetails = "SELECT * FROM personal WHERE $search_column LIKE '%$search_value%'";
+}
+else{
+    $sqlUserDetails = "SELECT * FROM personal";
+
+}
+$resultUserDetails = $mysqli->query($sqlUserDetails);
+
+// Check for errors during the query execution
+if (!$resultUserDetails) {
+    die('Error fetching user details: ' . $mysqli->error);
+}
+
+
+
+
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.3.1/css/all.css" integrity="sha384-mzrmE5qonljUremFsqc01SB46JvROS7bZs3IO2EmfFsd15uHvIt+Y8vEf7N7fWAU" crossorigin="anonymous">
+
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sharing Details</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 1020px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f4c4ea;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            max-height: 800px;
+        }
+        .table-container {
+            max-height: 450px; /* Set a fixed height for the table container */
+            overflow-y: auto; /* Add a vertical scrollbar if needed */
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            /*overflow: hidden;
+            max-height: 400px; /* Set a fixed height for the table */
+        }
+        
+        th{
+           position: relative;
+              overflow: auto;
+              font-weight: bold;
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            font-weight: bold;
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f5daef;
+        }
+
+        td {
+            background-color: #fff;
+        }
+
+        .button-container {
+        margin-top: 20px;
+    }
+
+    .add-button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .add-button:hover {
+        background-color: #45a049;
+    }
+
+    .reset-button {
+        padding: 8px;
+      background-color: #9845a0;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    
+
+    .search-button {
+        padding: 8px;
+      background-color: #9845a0;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    
+
+    .selectAll-button {
+        background-color: #795548;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .selectAll-button:hover {
+        background-color: #5d4037;
+    }
+
+        /* Add styles for the search box */
+        .search-container {
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            margin-right: 10px;
+        }
+
+        .tableFixHead thead th{
+        position: sticky; /* make the table heads sticky */
+        top: 0px; /* table head will be placed from the top of the table and sticks to it */
+      }
+      .scrollable-table {
+            max-height: 500px; /* Set the desired height for the scrollable block */
+            width: 100%; /* Set the width to 100% */
+            overflow-y: auto;}
+
+    </style>
+</head>
+
+<body>
+    <a href="calendar.html" style="position: absolute; top: 10px; left: 10px; text-decoration: none; color: #000;">
+        <button style="padding: 8px; background-color: #ccc; border: none; cursor: pointer;">Back</button>
+      </a>
+    <div class="container">
+        <h2><svg xmlns="http://www.w3.org/2000/svg" width="20" height="18" fill="currentColor" class="bi bi-file-earmark-text-fill" viewBox="0 0 16 16">
+            <path d="M9.293 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.707A1 1 0 0 0 13.707 4L10 .293A1 1 0 0 0 9.293 0M9.5 3.5v-2l3 3h-2a1 1 0 0 1-1-1M4.5 9a.5.5 0 0 1 0-1h7a.5.5 0 0 1 0 1zM4 10.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m.5 2.5a.5.5 0 0 1 0-1h4a.5.5 0 0 1 0 1z" />
+        </svg>  Details</h2>
+        
+        
+        
+        <?php if ($eventDetails !== null): ?>
+        <p><strong>Date:</strong> <?php echo $eventDetails['date']; ?></p>
+        <p><strong>Time:</strong> <?php echo $eventDetails['time']; ?></p>
+        <p><strong>Subject:</strong> <?php echo $eventDetails['subject']; ?></p>
+        <p><strong>Description:</strong> <?php echo $eventDetails['description']; ?></p>
+    <?php endif; ?>
+
+    
+
+        <div class="search-container">
+            <select class="search-box" name="search_column" id="search_column">
+                <option value="name">Name</option>
+                <option value="address">Address</option>
+                <option value="phone_number">Phone number</option>
+                <option value="email_id">Email ID</option>
+                
+            </select>
+           
+            <input class="search-box" type="text" name="search_value" id="search_value" placeholder="Search...">
+            <!--button onclick="search()">Search</button-->
+            <select class="search-box" name="search_category" id="search_category">
+                <option value="" selected disabled>Select Category</option>
+                <?php foreach ($categories as $category) { ?>
+                    <option value="<?php echo $category; ?>"><?php echo $category; ?></option>
+                <?php } ?>
+            </select>
+            <button onclick="searchByCategory()" class="search-button">Search by Category</button>
+            <button onclick="resetSearch()" class="reset-button">Reset</button>
+        </div>
+        <form method="post" action="send.php" id="eventForm">
+
+            <input type="hidden" name="date" value="<?php echo isset($eventDetails['date']) ? $eventDetails['date'] : ''; ?>">
+            <input type="hidden" name="time" value="<?php echo isset($eventDetails['time']) ? $eventDetails['time'] : ''; ?>">
+            <input type="hidden" name="subject" value="<?php echo isset($eventDetails['subject']) ? $eventDetails['subject'] : ''; ?>">
+            <input type="hidden" name="description" value="<?php echo isset($eventDetails['description']) ? $eventDetails['description'] : ''; ?>">
+
+
+            <div class="button-container">
+                <label><input type="checkbox" id="selectAll" onclick="selectAllContacts()"> Select All</label>
+                <button onclick = "send()" class="add-button" type="submit" name="sendEvent">Send</button>
+            </div>
+            <!-- TABLE CONSTRUCTION -->
+<div class="table-container">
+    <div class="tableFixHead">
+    <table>
+        <thead>
+        <tr>
+            <th>Select</th>
+            <th>Name</th>
+            <th>Address</th>
+            <th>Phone number</th>
+            <th>Email ID</th>
+            <th>Category</th>
+        </tr></thead><tbody>
+        <!-- PHP CODE TO FETCH DATA FROM ROWS -->
+        <?php while ($userDetails = $resultUserDetails->fetch_assoc()) : ?>
+        <tr>
+            <td><input type="checkbox" name="contact[]" value="<?php echo $userDetails['id']; ?>"></td>
+            <td><?php echo $userDetails['name']; ?></td>
+            <td><?php echo $userDetails['address']; ?></td>
+            <td><?php echo $userDetails["phone_number"]; ?></td>
+            <td><?php echo $userDetails["email_id"]; ?></td>
+            <td><?php echo str_replace('-', ' ', $userDetails["category"]); ?></td>
+        </tr>
+    <?php endwhile; ?>
+        </tbody>
+    </table>
+    
+    <!-- Add a hidden input field to store the selected contacts -->
+    <input type="hidden" name="selectedContacts" id="selectedContacts">
+</div></div>
+
+</form>
+
+<script>
+    function selectAllContacts() {
+        var checkboxes = document.getElementsByName('contact[]');
+        var selectAllCheckbox = document.getElementById('selectAll');
+
+        for (var i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = selectAllCheckbox.checked;
+        }
+    }
+    function search() {
+        var searchColumn = document.getElementById('search_column').value;
+        var searchValue = document.getElementById('search_value').value;
+        var eventIdParam = getUrlParameter('id');
+        var newUrl = '';
+        if (eventIdParam !== null) {
+            newUrl += '&id=' + eventIdParam;
+        }
+        window.location.href = '?search_column=' + searchColumn + '&search_value=' + searchValue+newUrl;
+    }
+
+    function resetSearch() {
+        var eventIdParam = getUrlParameter('id');
+        var newUrl = '';
+        if (eventIdParam !== null) {
+            newUrl += '?id=' + eventIdParam;
+        }
+        window.location.href = 'share_event.html' +newUrl; 
+    }
+    function searchByCategory() {
+    var searchCategory = document.getElementById('search_category').value;
+
+    // Build the new URL with the category filter and preserve the event ID if it exists
+    var newUrl = '?search_column=category&search_value=' + encodeURIComponent(searchCategory);
+    var eventIdParam = getUrlParameter('id');
+
+    if (eventIdParam !== null) {
+        newUrl += '&id=' + eventIdParam;
+    }
+
+    // Redirect to the new URL
+    window.location.href = newUrl;
+}
+
+
+
+
+
+    function send() {
+        // Get selected contacts
+        var selectedContacts = [];
+        var checkboxes = document.getElementsByName('contact[]');
+        for (var i = 0; i < checkboxes.length; i++) {
+            if (checkboxes[i].checked) {
+                selectedContacts.push(checkboxes[i].value);
+            }
+        }
+
+        // Check if at least one contact is selected
+        if (selectedContacts.length === 0) {
+            alert('Please select at least one contact.');
+            return;
+        }
+
+        // Set the selected contacts to the hidden input field
+        document.getElementById('selectedContacts').value = selectedContacts.join(',');
+
+        // Submit the form
+        document.getElementById('eventForm').action = 'send.php?id=<?php echo $eventId; ?>';
+        document.getElementById('eventForm').submit();
+
+    }
+
+
+
+// Function to get URL parameters by name
+function getUrlParameter(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+}
+
+        // Add an event listener to trigger search when Enter is pressed in the search box
+        document.getElementById('search_value').addEventListener('keyup', function (event) {
+                if (event.key === 'Enter') {
+                    search();
+                }
+            });
+            
+
+            
+            
+
+        </script>
+    </div>
+</body>
+
+
+</html>
+<?php
+// Close the result set for user details
+$resultUserDetails->close();
+$mysqli->close();
+?>

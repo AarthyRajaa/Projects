@@ -1,0 +1,164 @@
+<?php
+// Database connection parameters
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "diary";
+
+// Create a connection
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Initialize variables
+$id = $date = $time = $subject = $description = "";
+
+// Retrieve event details from the database
+if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET["id"])) {
+    $id = $_GET["id"];
+
+    $sql = "SELECT * FROM events2 WHERE id = $id";
+    $result = $conn->query($sql);
+
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+
+        $date = $row["date"];
+        $time = $row["time"];
+        $subject = $row["subject"];
+        $description = $row["description"];
+    } else {
+        echo "Event not found.";
+        exit();
+    }
+} elseif ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["updateEvent"])) {
+    // Handle form submission
+    // Get user input
+    $id = $_POST["id"];
+    $date = $_POST["date"];
+    $time = $_POST["time"];
+    $subject = $_POST["subject"];
+    $description = $_POST["description"];
+
+    // Update data in the database
+    $sql = "UPDATE events2 SET date='$date', time='$time', description='$description', subject='$subject' WHERE id=$id";
+
+    if ($conn->query($sql) === TRUE) {
+        echo '<script>alert("Event updated successfully.");window.location.href = "calendar.html";</script>';
+    } else {
+        echo "Error updating event: " . $conn->error;
+    }
+} 
+
+$conn->close();
+?>
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Event</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        form {
+            width: 80%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        label {
+            margin-top: 10px;
+            display: block;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        #updateEventDescription {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            box-sizing: border-box;
+            resize: vertical; /* Allow vertical resizing */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+}
+
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+    
+    <h2>Update Event</h2>
+
+    <a href="calendar.html" style="position: absolute; top: 10px; left: 10px; text-decoration: none; color: #000;">
+        <button style="padding: 8px; background-color: #ccc; border: none; cursor: pointer;">Back</button>
+      </a>
+
+    
+
+    <form id="updateEventForm" method="post" action="">
+        
+        <input type="hidden" name="id" value="<?php echo $id; ?>">
+
+        <label for="updateEventDate">Update Date:</label>
+        <input type="date" id="updateEventDate" name="date" value="<?php echo $date; ?>" required>
+        <br>
+
+        <label for="updateEventTime">Update Time:</label>
+        <input type="time" id="updateEventTime" name="time" value="<?php echo $time; ?>" required>
+        <br>
+
+        <label for="updateEventSubject">Update Event Subject:</label>
+        <input type="text" id="updateEventSubject" name="subject" value="<?php echo isset($subject) ? $subject : ''; ?>" required>
+        <br>
+
+        <label for="updateEventDescription">Update Event Description:</label>
+        <textarea id="updateEventDescription" name="description" rows="4" cols="40" required><?php echo isset($description) ? $description : ''; ?></textarea>
+        <br>
+        
+        <input type="hidden" name="updateEvent" value="true"> <!-- Added hidden input for updateEvent parameter -->
+
+        <button type="submit">Update Event</button>
+    </form>
+
+  
+    
+</body>
+
+</html>
